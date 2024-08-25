@@ -1,26 +1,42 @@
 ---
-- name: "Build a container with ansible"
+- name: "Build a container with Ansible"
   hosts: localhost
   connection: local
   tasks:
-    - name: stop current running container
+    - name: Check if the container is running
+      command: docker ps -q -f name=web-container
+      register: container_running
+      ignore_errors: yes
+
+    - name: Stop the running container if it exists
       command: docker stop web-container
+      when: container_running.stdout != ""
       ignore_errors: yes
 
-    - name: remove stopped container
+    - name: Remove the stopped container if it exists
       command: docker rm web-container
+      when: container_running.stdout != ""
       ignore_errors: yes
 
-    - name: remove comingsoon-image
-      command: docker rmi triple3a/comingsoon-page
+    - name: Check if the Docker image exists
+      command: docker images -q triple3a/comingsoon-page:latest
+      register: image_exists
       ignore_errors: yes
 
-    - name: build docker image using the Dockerfile
+    - name: Remove the Docker image if it exists
+      command: docker rmi triple3a/comingsoon-page:latest
+      when: image_exists.stdout != ""
+      ignore_errors: yes
+
+    - name: Build Docker image using the Dockerfile
       command: docker build -t triple3a/comingsoon-page .
 
-    - name: Push Image to dockerhub
+    - name: Log in to Docker Hub
+      command: docker login -u your_username -p your_password
+      ignore_errors: yes
+
+    - name: Push Image to Docker Hub
       command: docker push triple3a/comingsoon-page
 
-    - name: run container
+    - name: Run the container
       command: docker run -d --name web-container -p 5000:80 triple3a/comingsoon-page
-
